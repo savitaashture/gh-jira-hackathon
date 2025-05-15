@@ -179,11 +179,65 @@ func createJiraIssue(issue *github.Issue, summary string) error {
 	log.Printf("Jira API response for issue #%d - Status: %s, Body: %s", *issue.Number, resp.Status, string(body))
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		log.Printf("Jira issue created successfully for GitHub issue #%d", *issue.Number)
+		// Parse the Jira response to get the issue key
+		var jiraResponse struct {
+			Key string `json:"key"`
+		}
+		if err := json.Unmarshal(body, &jiraResponse); err != nil {
+			log.Printf("Failed to parse Jira response for issue #%d: %v", *issue.Number, err)
+			return err
+		}
+
+		log.Printf("Jira issue %s created successfully for GitHub issue #%d", jiraResponse.Key, *issue.Number)
+
+		// Update GitHub issue with Jira link
+		err = updateGitHubIssueWithJiraLink(issue, jiraResponse.Key)
+		if err != nil {
+			log.Printf("Failed to update GitHub issue #%d with Jira link: %v", *issue.Number, err)
+			return err
+		}
+
 		return nil
 	}
 
 	err = fmt.Errorf("Jira API responded with status %s", resp.Status)
 	log.Printf("Failed to create Jira issue for GitHub issue #%d: %v", *issue.Number, err)
 	return err
+}
+
+func updateGitHubIssueWithJiraLink(issue *github.Issue, jiraKey string) error {
+	log.Printf("Updating GitHub issue #%d with Jira issue link %s", *issue.Number, jiraKey)
+
+	// Create GitHub client
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: githubToken},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	// Construct the Jira issue URL
+	jiraIssueURL := fmt.Sprintf("%s/browse/%s", jiraBaseURL, jiraKey)
+
+	// Append Jira link to existing description
+	newDescription := *issue.Body
+	if newDescription != "" {
+		newDescription += "\n\n"
+	}
+	newDescription += fmt.Sprintf("---\nLinked Jira Issue: [%s](%s)", jiraKey, jiraIssueURL)
+
+	// Update the GitHub issue
+	updatedIssue := &github.IssueRequest{
+		Body: &newDescription,
+	}
+
+	log.Printf("Sending update request to GitHub for issue #%d", *issue.Number)
+	_, _, err := client.Issues.Edit(ctx, githubOwner, githubRepo, *issue.Number, updatedIssue)
+	if err != nil {
+		log.Printf("Failed to update GitHub issue #%d: %v", *issue.Number, err)
+		return fmt.Errorf("failed to update GitHub issue: %w", err)
+	}
+
+	log.Printf("Successfully updated GitHub issue #%d with Jira link", *issue.Number)
+	return nil
 }
