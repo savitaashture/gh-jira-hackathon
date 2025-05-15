@@ -75,7 +75,7 @@ Please format the response as follows:
 		if err := s.client.Generate(ctx, request, func(response api.GenerateResponse) error {
 			select {
 			case stream <- response:
-				log.Printf("Received response chunk from model")
+				log.Printf("Generated content: %s", response.Response)
 				return nil
 			case <-ctx.Done():
 				log.Printf("Context cancelled during generation")
@@ -99,7 +99,7 @@ Please format the response as follows:
 			}
 		case response, ok := <-stream:
 			if !ok {
-				log.Printf("Stream closed, summarization complete")
+				log.Printf("Summary generation complete. Final length: %d characters", fullResponse.Len())
 				return fullResponse.String(), nil
 			}
 			log.Printf("Appending response chunk to full response")
@@ -145,7 +145,7 @@ Please format the response as follows:
 		if err := s.client.Generate(ctx, request, func(response api.GenerateResponse) error {
 			select {
 			case stream <- response:
-				log.Printf("Received response chunk from model")
+				log.Printf("Generated content: %s", response.Response)
 				return nil
 			case <-ctx.Done():
 				log.Printf("Context cancelled during generation")
@@ -169,7 +169,7 @@ Please format the response as follows:
 			}
 		case response, ok := <-stream:
 			if !ok {
-				log.Printf("Stream closed, summarization complete")
+				log.Printf("Summary generation complete. Final length: %d characters", fullResponse.Len())
 				return fullResponse.String(), nil
 			}
 			log.Printf("Appending response chunk to full response")
