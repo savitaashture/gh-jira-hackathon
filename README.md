@@ -12,7 +12,7 @@ A GitHub to Jira synchronization system that enhances issue tracking by automati
 
 ## Prerequisites
 
-- Go 1.x or higher
+- Go (1.24)
 - [Ollama](https://ollama.ai/) installed and running locally
 - Access to both GitHub and Jira APIs
 - The Mistral model pulled in Ollama (default model)
