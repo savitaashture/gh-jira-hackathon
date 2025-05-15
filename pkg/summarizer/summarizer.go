@@ -61,14 +61,10 @@ Please format the response as follows:
 
 	go func() {
 		defer close(stream)
-		err := s.client.Generate(ctx, request, func(response api.GenerateResponse) error {
+		_ = s.client.Generate(ctx, request, func(response api.GenerateResponse) error {
 			stream <- response
 			return nil
 		})
-		if err != nil {
-			// Handle error by sending empty response
-			close(stream)
-		}
 	}()
 
 	for response := range stream {
@@ -90,14 +86,10 @@ func (s *Summarizer) SummarizeWithCustomPrompt(ctx context.Context, content, pro
 
 	go func() {
 		defer close(stream)
-		err := s.client.Generate(ctx, request, func(response api.GenerateResponse) error {
+		_ = s.client.Generate(ctx, request, func(response api.GenerateResponse) error {
 			stream <- response
 			return nil
 		})
-		if err != nil {
-			// Handle error by sending empty response
-			close(stream)
-		}
 	}()
 
 	for response := range stream {
