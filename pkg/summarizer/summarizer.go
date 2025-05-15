@@ -41,14 +41,15 @@ func New(config Config) (*Summarizer, error) {
 
 // SummarizeChanges generates a summary of the provided changes
 func (s *Summarizer) SummarizeChanges(ctx context.Context, changes string) (string, error) {
-	prompt := fmt.Sprintf(`Please analyze these changes and create a concise, well-structured summary suitable for release notes:
+	prompt := fmt.Sprintf(`Please analyze this GitHub issue description and create a clear, structured summary suitable for a Jira issue:
 
 %s
 
 Please format the response as follows:
-1. A brief overview (2-3 sentences)
-2. Key changes (bullet points)
-3. Impact on users/developers
+1. Issue Overview (1-2 sentences)
+2. Key Details (bullet points)
+3. Technical Requirements (if any)
+4. Dependencies and Impact (if mentioned)
 `, changes)
 
 	request := &api.GenerateRequest{
@@ -94,6 +95,20 @@ Please format the response as follows:
 
 // SummarizeWithCustomPrompt generates a summary using a custom prompt template
 func (s *Summarizer) SummarizeWithCustomPrompt(ctx context.Context, content, promptTemplate string) (string, error) {
+	// If no custom prompt is provided, use a default one for GitHub to Jira conversion
+	if promptTemplate == "" {
+		promptTemplate = `Please analyze this GitHub issue description and create a clear, structured summary for Jira:
+
+%s
+
+Please format the response as follows:
+1. Issue Overview (1-2 sentences)
+2. Key Details (bullet points)
+3. Technical Requirements (if any)
+4. Dependencies and Impact (if mentioned)
+`
+	}
+
 	request := &api.GenerateRequest{
 		Model:  s.config.Model,
 		Prompt: fmt.Sprintf(promptTemplate, content),

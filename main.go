@@ -66,9 +66,8 @@ func pollGitHub() {
 			break
 		}
 
-		// Create a context with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
+		// Create a context with a longer timeout for model generation
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 
 		// Generate the summary
 		summary, err := sum.SummarizeWithCustomPrompt(ctx, *issue.Body, fmt.Sprintf(`Please analyze this GitHub issue description and create a clear, concise summary:
@@ -80,8 +79,13 @@ Please format the response as follows:
 2. Key points (bullet points)
 3. Technical details (if any)
 4. Impact and dependencies (if mentioned)`, *issue.Body))
+
+		// Cancel the context after we're done with the API call
+		cancel()
+
 		if err != nil {
-			log.Fatalf("Failed to generate summary: %v", err)
+			log.Printf("Failed to generate summary for issue #%d: %v", *issue.Number, err)
+			continue
 		}
 
 		if !processedIssueIDs[*issue.ID] {
