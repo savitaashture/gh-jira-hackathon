@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"strings"
+	"encoding/json"
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
@@ -16,8 +18,8 @@ var (
 	githubOwner       = "savitaashture"
 	githubRepo        = "gh-jira-hackathon"
 	githubToken       = ""
-	jiraBaseURL       = ""
-	jiraUsername      = ""
+	jiraBaseURL       = "https://abhighosh3108.atlassian.net"
+	jiraUsername      = "abhi.ghosh3108@gmail.com"
 	jiraAPIToken      = ""
 	jiraProjectKey    = "GT"
 	jiraIssueType     = "Task"
@@ -74,36 +76,26 @@ func pollGitHub() {
 func createJiraIssue(issue *github.Issue) error {
 	jiraURL := fmt.Sprintf("%s/rest/api/2/issue", jiraBaseURL)
 
-	//payload := map[string]interface{}{
-	//	"fields": map[string]interface{}{
-	//		"project": map[string]string{
-	//			"key": jiraProjectKey,
-	//		},
-	//		"summary":     fmt.Sprintf("GitHub Issue #%d: %s", *issue.Number, *issue.Title),
-	//		"description": fmt.Sprintf("Imported from GitHub: %s\n\n%s", *issue.HTMLURL, *issue.Body),
-	//		"issuetype": map[string]string{
-	//			"name": jiraIssueType,
-	//		},
-	//	},
-	//}
+	payload := map[string]interface{}{
+		"fields": map[string]interface{}{
+			"project": map[string]string{
+				"key": jiraProjectKey,
+			},
+			"summary":     fmt.Sprintf("GitHub Issue #%d: %s", *issue.Number, *issue.Title),
+			"description": fmt.Sprintf("Imported from GitHub: %s\n\n%s", *issue.HTMLURL, *issue.Body),
+			"issuetype": map[string]string{
+				"name": jiraIssueType,
+			},
+		},
+	}
 
-	//jsonData, _ := json.Marshal(payload)
+	jsonData, _ := json.Marshal(payload)
 
-	//req, err := http.NewRequest("POST", jiraURL, strings.NewReader(string(jsonData)))
-	//if err != nil {
-	//	return err
-	//}
-
-	req, err := http.NewRequest("GET", jiraURL, nil)
+	req, err := http.NewRequest("POST", jiraURL, strings.NewReader(string(jsonData)))
 	if err != nil {
 		return err
 	}
 
-	// Generate Basic Auth header manually
-	//req.SetBasicAuth(jiraUsername, jiraAPIToken)
-	//auth := jiraUsername + ":" + jiraAPIToken
-	//encodedAuth := base64.StdEncoding.EncodeToString([]byte(auth))
-	//req.Header.Set("Authorization", "Basic "+encodedAuth)
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(jiraUsername, jiraAPIToken)
 	req.Header.Set("Accept", "application/json")
