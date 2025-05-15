@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"time"
 	"strings"
-	"encoding/json"
+	"time"
 
 	"github.com/google/go-github/github"
+	"github.com/savitaashture/gh-jira/pkg/summarizer"
 	"golang.org/x/oauth2"
 )
 
@@ -30,8 +31,15 @@ func main() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
+	sum, err := summarizer.New(summarizer.Config{
+		Model: "mistral", // Using mistral model
+	})
+	if err != nil {
+		log.Fatalf("Failed to create summarizer: %v", err)
+	}
+
 	// Initial fetch on startup
-	go pollGitHub()
+	go pollGitHub(sum)
 
 	for range ticker.C {
 		pollGitHub()
@@ -58,12 +66,22 @@ func pollGitHub() {
 
 	for _, issue := range issues {
 		if issue.IsPullRequest() {
-			continue
+			break
+		}
+
+		// Create a context with timeout
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		// Generate the summary
+		summary, err := sum.SummarizeWithCustomPrompt(ctx, changes, fmt.Sprinf("Summarize the following changes in a release note: %s %", *issue.Body))
+		if err != nil {
+			log.Fatalf("Failed to generate summary: %v", err)
 		}
 
 		if !processedIssueIDs[*issue.ID] {
 			log.Printf("New GitHub issue detected: #%d - %s", *issue.Number, *issue.Title)
-			err := createJiraIssue(issue)
+			err := createJiraIssue(issue, summary)
 			if err == nil {
 				processedIssueIDs[*issue.ID] = true
 			} else {
@@ -73,7 +91,7 @@ func pollGitHub() {
 	}
 }
 
-func createJiraIssue(issue *github.Issue) error {
+func createJiraIssue(issue *github.Issue, summary string) error {
 	jiraURL := fmt.Sprintf("%s/rest/api/2/issue", jiraBaseURL)
 
 	payload := map[string]interface{}{
