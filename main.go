@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -16,30 +17,26 @@ import (
 )
 
 var (
-	githubOwner       = "savitaashture"
-	githubRepo        = "gh-jira-hackathon"
-	githubToken       = ""
-	jiraBaseURL       = "https://abhighosh3108.atlassian.net"
-	jiraUsername      = "abhi.ghosh3108@gmail.com"
-	jiraAPIToken      = ""
+	githubOwner       = os.Getenv("GH_OWNER")
+	githubRepo        = os.Getenv("GH_REPO")
+	githubToken       = os.Getenv("GH_TOKEN")
+	jiraUsername      = os.Getenv("JIRA_USERNAME")
+	jiraAPIToken      = os.Getenv("JIRA_API_TOKEN")
+	jiraBaseURL       = os.Getenv("JIRA_BASE_URL")
 	jiraProjectKey    = "GT"
 	jiraIssueType     = "Task"
 	processedIssueIDs = make(map[int64]bool)
+	sum, _            = summarizer.New(summarizer.Config{
+		Model: "mistral", // Using mistral model
+	})
 )
 
 func main() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
-	sum, err := summarizer.New(summarizer.Config{
-		Model: "mistral", // Using mistral model
-	})
-	if err != nil {
-		log.Fatalf("Failed to create summarizer: %v", err)
-	}
-
 	// Initial fetch on startup
-	go pollGitHub(sum)
+	go pollGitHub()
 
 	for range ticker.C {
 		pollGitHub()
@@ -74,7 +71,7 @@ func pollGitHub() {
 		defer cancel()
 
 		// Generate the summary
-		summary, err := sum.SummarizeWithCustomPrompt(ctx, changes, fmt.Sprinf("Summarize the following changes in a release note: %s %", *issue.Body))
+		summary, err := sum.SummarizeWithCustomPrompt(ctx, *issue.Body, "Summarize the following changes in a release note: %s %")
 		if err != nil {
 			log.Fatalf("Failed to generate summary: %v", err)
 		}
