@@ -71,7 +71,15 @@ func pollGitHub() {
 		defer cancel()
 
 		// Generate the summary
-		summary, err := sum.SummarizeWithCustomPrompt(ctx, *issue.Body, "Summarize the following changes in a release note: %s %")
+		summary, err := sum.SummarizeWithCustomPrompt(ctx, *issue.Body, fmt.Sprintf(`Please analyze this GitHub issue description and create a clear, concise summary:
+
+%s
+
+Please format the response as follows:
+1. Brief overview (1-2 sentences)
+2. Key points (bullet points)
+3. Technical details (if any)
+4. Impact and dependencies (if mentioned)`, *issue.Body))
 		if err != nil {
 			log.Fatalf("Failed to generate summary: %v", err)
 		}
@@ -97,7 +105,7 @@ func createJiraIssue(issue *github.Issue, summary string) error {
 				"key": jiraProjectKey,
 			},
 			"summary":     fmt.Sprintf("GitHub Issue #%d: %s", *issue.Number, *issue.Title),
-			"description": fmt.Sprintf("Imported from GitHub: %s\n\n%s", *issue.HTMLURL, *issue.Body),
+			"description": fmt.Sprintf("Imported from GitHub: %s\n\nSummarized Description:\n%s", *issue.HTMLURL, summary),
 			"issuetype": map[string]string{
 				"name": jiraIssueType,
 			},
