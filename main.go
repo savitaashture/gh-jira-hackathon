@@ -70,7 +70,7 @@ func pollGitHub() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 
 		// Generate the summary
-		summary, err := sum.SummarizeWithCustomPrompt(ctx, *issue.Body, fmt.Sprintf(`Please analyze this GitHub issue description and create a clear, concise summary:
+		summary, err := sum.SummarizeWithCustomPrompt(ctx, *issue.Body, fmt.Sprintf(`Please analyze this GitHub issue description and create a clear, concise summary with necessary code snippet:
 
 %s
 
