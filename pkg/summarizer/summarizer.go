@@ -58,20 +58,38 @@ Please format the response as follows:
 
 	var fullResponse strings.Builder
 	stream := make(chan api.GenerateResponse)
+	errChan := make(chan error, 1)
 
 	go func() {
 		defer close(stream)
-		_ = s.client.Generate(ctx, request, func(response api.GenerateResponse) error {
-			stream <- response
-			return nil
-		})
+		if err := s.client.Generate(ctx, request, func(response api.GenerateResponse) error {
+			select {
+			case stream <- response:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}); err != nil {
+			errChan <- err
+		}
+		close(errChan)
 	}()
 
-	for response := range stream {
-		fullResponse.WriteString(response.Response)
+	for {
+		select {
+		case err := <-errChan:
+			if err != nil {
+				return "", fmt.Errorf("failed to generate summary: %w", err)
+			}
+		case response, ok := <-stream:
+			if !ok {
+				return fullResponse.String(), nil
+			}
+			fullResponse.WriteString(response.Response)
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
 	}
-
-	return fullResponse.String(), nil
 }
 
 // SummarizeWithCustomPrompt generates a summary using a custom prompt template
@@ -83,18 +101,36 @@ func (s *Summarizer) SummarizeWithCustomPrompt(ctx context.Context, content, pro
 
 	var fullResponse strings.Builder
 	stream := make(chan api.GenerateResponse)
+	errChan := make(chan error, 1)
 
 	go func() {
 		defer close(stream)
-		_ = s.client.Generate(ctx, request, func(response api.GenerateResponse) error {
-			stream <- response
-			return nil
-		})
+		if err := s.client.Generate(ctx, request, func(response api.GenerateResponse) error {
+			select {
+			case stream <- response:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}); err != nil {
+			errChan <- err
+		}
+		close(errChan)
 	}()
 
-	for response := range stream {
-		fullResponse.WriteString(response.Response)
+	for {
+		select {
+		case err := <-errChan:
+			if err != nil {
+				return "", fmt.Errorf("failed to generate summary: %w", err)
+			}
+		case response, ok := <-stream:
+			if !ok {
+				return fullResponse.String(), nil
+			}
+			fullResponse.WriteString(response.Response)
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
 	}
-
-	return fullResponse.String(), nil
 }
